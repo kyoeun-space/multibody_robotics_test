@@ -15,7 +15,7 @@ function run_planar_robot_simulation()
     
     disp('ODE 솔버를 사용하여 시뮬레이션을 실행합니다...');
     ode_func = @(t, y) dynamics_system(t, y, robot_params);
-    options = odeset('RelTol', 1e-4, 'AbsTol', 1e-5, 'Stats', 'on');
+    options = odeset('RelTol', 1e-20, 'AbsTol', 1e-20, 'Stats', 'on');
     [T, Y] = ode45(ode_func, t_span, [q0; q_dot0], options);
 
     disp('시뮬레이션 완료.');
@@ -285,7 +285,7 @@ function [M_f, M1, M2_dot1, M2_dot2] = get_M_f(q_i, q_i_dot, params, i)
     
     M0 = blkdiag(M_vv_0, M_ww_0, M_dd_0);
     M0(1:3, 4:6) = M_vw_0;
-    M0(4:6, 1:3) = H_ru+H_rpsi;
+    M0(4:6, 7:8) = H_ru+H_rpsi;
 
     % --- Linear part M_f^(1)
     M_vw_1 = -cross_mat(V_u * delta);
@@ -459,12 +459,14 @@ function I_tilde_psipsi = get_I_tilde_psipsi(delta, omega, params, i)
     delta_psi_mat = get_delta_psi_mat(delta, i);
     
     % 식 내부 항 계산
-    term1 = (omega_Delta_mat * Y_psi_psi * delta_psi_mat - Y_psi_psi_bar * delta * omega') * I_S;
-    
+    term1 = (omega_Delta_mat * Y_psi_psi * delta_psi_mat - Y_psi_psi_bar * delta * omega') * I_S
+    omega
     J_S_omega = J_S * omega;
     J_S_omega_Delta_mat = get_omega_Delta_mat(J_S_omega, params, i);
-    
-    term2 = J_S_omega_Delta_mat * Y_psi_psi * delta_psi_mat * omega';
+    J_S_omega_Delta_mat
+    Y_psi_psi
+    delta_psi_mat
+    term2 = J_S_omega_Delta_mat * Y_psi_psi * delta_psi_mat * omega
     
     % 최종 I_tilde_psipsi 계산
     I_tilde_psipsi = term1 - term2;
@@ -518,50 +520,50 @@ function omega_Delta_mat = get_omega_Delta_mat(omega_vec, params, i)
 end
 
 function H_tilde_uu = get_H_tilde_uu(omega, params, i)
-    % 식 (B.62) 구현
-    
-    % 필요한 적분 행렬들을 params 구조체에서 가져옵니다.
-    % Z_ij는 ∫ρS φ_i' φ_j ds 형태의 행렬들입니다.
-    Z_xy = params.integral_matrices(i).Z_xy;
-    Z_xz = params.integral_matrices(i).Z_xz;
-    Z_yx = params.integral_matrices(i).Z_yx;
-    Z_yz = params.integral_matrices(i).Z_yz;
-    Z_zx = params.integral_matrices(i).Z_zx;
-    Z_zy = params.integral_matrices(i).Z_zy;
-    
-    wx = omega(1); wy = omega(2); wz = omega(3);
-    
-    nx = size(Z_xy, 2); % traction 모드 개수
-    ny = size(Z_xy, 1); % y-bending 모드 개수
-    nz = size(Z_xz, 1); % z-bending 모드 개수
-    na = 0; % Torsion 모드 개수 (이 행렬에서는 사용되지 않음)
+    % % 식 (B.62) 구현
+    % 
+    % % 필요한 적분 행렬들을 params 구조체에서 가져옵니다.
+    % % Z_ij는 ∫ρS φ_i' φ_j ds 형태의 행렬들입니다.
+    % Z_xy = params.integral_matrices(i).Z_xy;
+    % Z_xz = params.integral_matrices(i).Z_xz;
+    % Z_yx = params.integral_matrices(i).Z_yx;
+    % Z_yz = params.integral_matrices(i).Z_yz;
+    % Z_zx = params.integral_matrices(i).Z_zx;
+    % Z_zy = params.integral_matrices(i).Z_zy;
+    % 
+    % wx = omega(1); wy = omega(2); wz = omega(3);
+    % 
+    % nx = size(Z_xy, 2); % traction 모드 개수
+    % ny = size(Z_xy, 1); % y-bending 모드 개수
+    % nz = size(Z_xz, 1); % z-bending 모드 개수
+    % na = 0; % Torsion 모드 개수 (이 행렬에서는 사용되지 않음)
 
     % 식 (B.62)의 블록 행렬 구조에 따라 조립 (planar 2x2)
     H_tilde_uu = zeros(2,2);
 end
 
 function H_tilde_psipsi = get_H_tilde_psipsi(omega, params, i)
-    % 식 (B.63) 구현
-
-    % 필요한 적분 행렬들을 params 구조체에서 가져옵니다.
-    % Y_ij는 ∫ρ Δ_i' J_s^-1 Δ_j ds 형태의 행렬들입니다.
-    Y_ay = params.integral_matrices(i).Y_ay;
-    Y_az = params.integral_matrices(i).Y_az;
-    Y_ya = params.integral_matrices(i).Y_ya;
-    Y_za = params.integral_matrices(i).Y_za;
-    
-    % 식 (B.63) 아래의 정의에 따라 가중된 각속도 omega_tilde 계산
-    I_S = params.I_S{i};
-    omega_tilde = I_S * omega;
-    w_tilde_y = omega_tilde(2);
-    w_tilde_z = omega_tilde(3);
-    
-    nx = 0; % Traction 모드 (이 행렬에서는 사용되지 않음)
-    ny = size(Y_ay, 2); % y-bending 모드 개수
-    nz = size(Y_az, 2); % z-bending 모드 개수
-    na = size(Y_ay, 1); % torsion 모드 개수
-    
-    % 식 (B.63)의 블록 행렬 구조에 따라 조립
+    % % 식 (B.63) 구현
+    % 
+    % % 필요한 적분 행렬들을 params 구조체에서 가져옵니다.
+    % % Y_ij는 ∫ρ Δ_i' J_s^-1 Δ_j ds 형태의 행렬들입니다.
+    % Y_ay = params.integral_matrices(i).Y_ay;
+    % Y_az = params.integral_matrices(i).Y_az;
+    % Y_ya = params.integral_matrices(i).Y_ya;
+    % Y_za = params.integral_matrices(i).Y_za;
+    % 
+    % % 식 (B.63) 아래의 정의에 따라 가중된 각속도 omega_tilde 계산
+    % I_S = params.I_S{i};
+    % omega_tilde = I_S * omega;
+    % w_tilde_y = omega_tilde(2);
+    % w_tilde_z = omega_tilde(3);
+    % 
+    % nx = 0; % Traction 모드 (이 행렬에서는 사용되지 않음)
+    % ny = size(Y_ay, 2); % y-bending 모드 개수
+    % nz = size(Y_az, 2); % z-bending 모드 개수
+    % na = size(Y_ay, 1); % torsion 모드 개수
+    % 
+    % % 식 (B.63)의 블록 행렬 구조에 따라 조립
     % planar 2 x 2
     H_tilde_psipsi = zeros(2,2);
 end
@@ -573,7 +575,7 @@ function gamma_f = get_gamma_f(t_i, q_i, q_i_dot, M_f_i, params, i)
     Omega_i = blkdiag(omega_skew, omega_skew, zeros(params.n_f(i)));
     
     M_f_dot_i = get_M_f_dot(q_i, q_i_dot, params, i);
-    M_f_tilde_i = get_M_f_tilde(q_i, omega_i, params, i);
+    M_f_tilde_i = get_M_f_tilde(q_i, q_i_dot, omega_i, params, i);
 
     K_delta_delta = params.K_dd{i};
     K_f_x_i = [zeros(6,1); K_delta_delta * q_i(2:end)];
@@ -598,11 +600,11 @@ function H_psipsi = get_H_psipsi(delta, Y_psipsi, I_S)
 end
 function d_u_mat = get_delta_u_mat(delta, Z_uu)
     % Eq (B.30)
-    d_u_mat = [zeros(1,1), delta, zeros(1,1)]; % Placeholder
+    d_u_mat = [zeros(2,1), delta, zeros(2,1)]; % Placeholder
 end
 function d_psi_mat = get_delta_psi_mat(delta, Y_psipsi)
     % Eq (B.34)
-    d_psi_mat = [zeros(1,1), zeros(1,1), delta]; % Placeholder
+    d_psi_mat = [zeros(2,1), zeros(2,1), delta]; % Placeholder
 end
 
 
@@ -667,7 +669,7 @@ n_f = params.n_f(i)
     omega_i_skew = [0,-omega_i(3),omega_i(2); omega_i(3),0,-omega_i(1); -omega_i(2),omega_i(1),0];
     
     top_right_block = [omega_i_skew * Phi_i; omega_i_skew * Delta_i];
-    omega_cross_p = cross(omega_i, -p_r_i);
+    omega_cross_p = cross(omega_i, p_r_i);
     omega_cross_p_skew = [0,-omega_cross_p(3),omega_cross_p(2); omega_cross_p(3),0,-omega_cross_p(1); -omega_cross_p(2),omega_cross_p(1),0];
     
     A_dot_f0_6x = [zeros(3), omega_cross_p_skew, top_right_block(1:3, :);
@@ -678,7 +680,7 @@ n_f = params.n_f(i)
     else % i == n일 때, 다음은 페이로드이므로 유연좌표 없음
         num_pad_rows = 0;
     end
-    A_dot_f0 = [A_dot_f0_6x; zeros(num_pad_rows, size(A_dot_f0_6x, 2))];
+    A_dot_f0 = [A_dot_f0_6x; zeros(num_pad_rows, 3+3+params.n_f(i))];
     % <<<<<<<<<<<<<<<< 여기까지 >>>>>>>>>>>>>>>>
 
     d_dt_Phi_delta = Phi_i * delta_i_dot + omega_i_skew * Phi_i * delta_i;
@@ -691,19 +693,11 @@ n_f = params.n_f(i)
     
     d_dt_R_minus_I_Delta = (R_psi_i_dot + omega_i_skew * (R_psi_i - eye(3))) * Delta_i;
     
-    A_dot_f1_6x = [zeros(3), -d_dt_Phi_delta_skew, zeros(3, n_f(i));
+    A_dot_f1_6x = [zeros(3), -d_dt_Phi_delta_skew, zeros(3, params.n_f(i));
                     zeros(3), zeros(3),             d_dt_R_minus_I_Delta];
-    A_ring_f1 = [A_ring_f1_6x ; zeros(num_pad_rows, size(A_ring_f1_6x, 2))];
+    A_dot_f1 = [A_dot_f1_6x ; zeros(num_pad_rows, 3+3+params.n_f(i))];
 
-    if i < params.n
-        Omega_i_op = blkdiag(omega_i_skew, omega_i_skew, zeros(params.n_f(i+1))); 
-    else 
-        Omega_i_op = blkdiag(omega_i_skew, omega_i_skew);
-    end
-    Omega_bar_im1_op = blkdiag(omega_im1_skew, omega_im1_skew, zeros(params.n_f(i)));
-
-    
-    A_dot_f1 = [A_dot_f1_6x; zeros(params.n_f(i+1), 3+3+n_f(i))];
+    A_dot_f1 = A_dot_f0+A_dot_f1
 
 end
 
